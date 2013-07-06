@@ -1,14 +1,25 @@
 module SuperModel
   class Base    
-    class_attribute :known_attributes
-    self.known_attributes = []
+    @@known_attributes = []
+    
+    def self.known_attributes
+    	@@known_attributes
+    end
+    
+    def self.known_attributes=(known_attributes)
+    	@@known_attributes = known_attributes
+    end
     
     class << self
-      attr_accessor(:primary_key) #:nodoc:
+      attr_writer :primary_key, :id
       
       def primary_key
-        @primary_key ||= 'id'
-      end
+				@primary_key || false
+			end
+			
+			def id
+				@id || false
+			end
       
       def collection(&block)
         @collection ||= Class.new(Array)
@@ -17,7 +28,7 @@ module SuperModel
       end
 
       def attributes(*attributes)
-        self.known_attributes |= attributes.map(&:to_s)
+        self.known_attributes += attributes.map(&:to_s)
       end
       
       def records
@@ -25,6 +36,7 @@ module SuperModel
       end
       
       def find_by_attribute(name, value) #:nodoc:
+      	puts "Total records :: #{records.count}"
         item = records.values.find {|r| r.send(name) == value }
         item && item.dup
       end
@@ -54,19 +66,6 @@ module SuperModel
         item = records.values[-1]
         item && item.dup
       end
-
-      def where(options)
-        items = records.values.select do |r|
-          options.all? do |k, v|
-            if v.is_a?(Enumerable)
-              v.include?(r.send(k))
-            else
-              r.send(k) == v
-            end
-          end
-        end
-        collection.new(items.deep_dup)
-      end
       
       def exists?(id)
         records.has_key?(id)
@@ -93,7 +92,7 @@ module SuperModel
       end
       
       # Removes all records and executes 
-      # destroy callbacks.
+      # destory callbacks.
       def destroy_all
         all.each {|r| r.destroy }
       end
@@ -137,13 +136,12 @@ module SuperModel
     attr_writer   :new_record
     
     def known_attributes
-      self.class.known_attributes | self.attributes.keys.map(&:to_s)
+      self.class.known_attributes + self.attributes.keys.map(&:to_s)
     end
     
     def initialize(attributes = {})
       @new_record = true
       @attributes = {}.with_indifferent_access
-      @attributes.merge!(known_attributes.inject({}) {|h, n| h[n] = nil; h })
       @changed_attributes = {}
       load(attributes)
     end
@@ -203,10 +201,8 @@ module SuperModel
     def exists?
       !new?
     end
-    alias_method :persisted?, :exists?
     
     def load(attributes) #:nodoc:
-      return unless attributes
       attributes.each do |(name, value)| 
         self.send("#{name}=".to_sym, value) 
       end

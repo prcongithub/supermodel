@@ -16,6 +16,7 @@ module SuperModel
       end
       
       def created_at=(time)
+      	puts time
         write_attribute(:created_at, parse_time(time))
       end
 
@@ -34,11 +35,11 @@ module SuperModel
         end
 
         def current_time
-          if Time.respond_to?(:current)
+          #if Time.respond_to?(:current)
             Time.current
-          else
-            Time.now
-          end
+          #else
+          #  Time.now
+          #end
         end
       
         def set_created_at

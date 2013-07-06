@@ -3,13 +3,42 @@ module SuperModel
     module ClassMethods
       def self.extended(base)
         base.class_eval do
-          class_inheritable_array :indexed_attributes
-          self.indexed_attributes = []
-                    
-          class_inheritable_hash :redis_options
-          self.redis_options = {}
+          @@indexed_attributes = []
+          #self.indexed_attributes = []
+          
+          #class_inheritable_array :serialized_attributes
+          @@serialized_attributes = []
+          
+          @@redis_options = {}
+          #self.redis_options = {}
         end
       end
+      
+      def serialized_attributes
+      	@@serialized_attributes
+      end
+      
+      def serialized_attributes=(serialized_attributes)
+      	@@serialized_attributes = serialized_attributes
+      end
+      
+      def indexed_attributes
+      	@@indexed_attributes
+      end
+      
+      def indexed_attributes=(indexed_attributes)
+      	@@indexed_attributes = indexed_attributes
+      end
+      
+      def redis_options
+      	@@redis_options
+      end
+      
+      def redis_options=(redis_options)
+      	@@redis_options = redis_options
+      end
+      
+      
       
       def namespace
         @namespace ||= self.name.downcase
@@ -26,7 +55,11 @@ module SuperModel
       def indexes(*indexes)
         self.indexed_attributes += indexes.map(&:to_s)
       end
-            
+      
+      def serialize(*attributes)
+        self.serialized_attributes += attributes.map(&:to_s)
+      end
+      
       def redis_key(*args)
         args.unshift(self.namespace)
         args.join(":")
@@ -73,9 +106,10 @@ module SuperModel
       end
       
       def find_by_attribute(key, value)
-        item_ids = redis.sort(redis_key(key, value.to_s))
-        item_id  = item_ids.first
-        item_id && existing(:id => item_id)
+        #item_ids = redis.sort(redis_key(key, value.to_s))
+        #item_id  = item_ids.first
+        #item_id && existing(:id => item_id)
+        all.select{|x| x.send(key) == value}
       end
       
       def find_all_by_attribute(key, value)
@@ -102,7 +136,10 @@ module SuperModel
 
           destroy_indexes
           redis.srem(self.class.redis_key, self.id)
-          redis.del(redis_key)
+      
+          attributes.keys.each do |key|
+            redis.del(redis_key(key))
+          end
         end
       
         def destroy_indexes
@@ -120,7 +157,7 @@ module SuperModel
         end
     
         def generate_id
-          redis.incr(self.class.redis_key(:uid))
+          redis.incr(self.class.redis_key(:uid)).to_s
         end
 
         def indexed_attributes
@@ -130,17 +167,36 @@ module SuperModel
         def redis
           self.class.redis
         end
-
+    
         def redis_key(*args)
           self.class.redis_key(id, *args)
         end
       
+        def serialized_attributes
+          self.class.serialized_attributes
+        end
+      
+        def serialize_attribute(key, value)
+          return value unless serialized_attributes.include?(key)
+          value.to_json
+        end
+      
+        def deserialize_attribute(key, value)
+          return value unless serialized_attributes.include?(key)
+          value && ActiveSupport::JSON.decode(value)
+        end
+      
         def redis_set
-          redis.set(redis_key, serializable_hash.to_json)
+          serializable_hash.each do |(key, value)|
+            redis.set(redis_key(key), serialize_attribute(key, value))
+          end
         end
       
         def redis_get
-          load(ActiveSupport::JSON.decode(redis.get(redis_key)))
+          known_attributes.each do |key|
+            result = deserialize_attribute(key, redis.get(redis_key(key)))
+            send("#{key}=", result)
+          end
         end
         public :redis_get
     

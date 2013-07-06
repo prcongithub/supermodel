@@ -2,6 +2,7 @@ gem "activesupport"
 gem "activemodel"
 
 require "active_support/core_ext/class/attribute_accessors"
+require "active_support/core_ext/class/attribute"
 require "active_support/core_ext/hash/indifferent_access"
 require "active_support/core_ext/kernel/reporting"
 require "active_support/core_ext/module/delegation"
@@ -9,7 +10,6 @@ require "active_support/core_ext/module/aliasing"
 require "active_support/core_ext/object/blank"
 require "active_support/core_ext/object/try"
 require "active_support/core_ext/object/to_query"
-require "active_support/core_ext/class/attribute"
 require "active_support/json"
 
 require "active_model"
@@ -21,17 +21,16 @@ module SuperModel
 end
 
 $:.unshift(File.dirname(__FILE__))
+
 require "supermodel/ext/array"
 
-module SuperModel
-  autoload :Association, "supermodel/association"
-  autoload :Callbacks,   "supermodel/callbacks"
-  autoload :Observing,   "supermodel/observing"
-  autoload :Marshal,     "supermodel/marshal"
-  autoload :RandomID,    "supermodel/random_id"
-  autoload :Timestamp,   "supermodel/timestamp"
-  autoload :Validations, "supermodel/validations"
-  autoload :Dirty,       "supermodel/dirty"
-  autoload :Redis,       "supermodel/redis"
-  autoload :Base,        "supermodel/base"
-end
+require "supermodel/association"
+require "supermodel/callbacks"
+require "supermodel/observing"
+require "supermodel/marshal"
+require "supermodel/random_id"
+require "supermodel/timestamp"
+require "supermodel/validations"
+require "supermodel/dirty"
+require "supermodel/base"
+require "supermodel/redis"
